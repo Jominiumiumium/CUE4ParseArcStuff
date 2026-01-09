@@ -36,11 +36,36 @@ namespace CUE4Parse.UE4.IO.Objects
         {
             var streamBuffer = new byte[Ar.Length];
             Ar.Read(streamBuffer, 0, streamBuffer.Length);
+            // Custom Decryption
+            if (streamBuffer.Length > 144)
+            {
+                var key = new byte[] {
+                    0x5A, 0x47, 0x41, 0xBC, 0x46, 0x9E, 0x10, 0xE5,
+                    0x69, 0xD4, 0x80, 0x57, 0xB7, 0xAB, 0x43, 0x32,
+                    0x03, 0x88, 0xC9, 0x74, 0x87, 0x59, 0x66, 0x3B,
+                    0xB5, 0xD1, 0x3E, 0x20, 0x1C, 0xA2, 0x05, 0x2E
+                };
+
+                using (var aes = Aes.Create())
+                {
+                    aes.Key = key;
+                    aes.Mode = CipherMode.ECB;
+                    aes.Padding = PaddingMode.None;
+
+                    using (var decryptor = aes.CreateDecryptor())
+                    {
+                        var dataLen = streamBuffer.Length - 144;
+                        var alignedLen = (dataLen / 16) * 16; // Decrypt only full blocks if any partial
+                        if (alignedLen > 0)
+                        {
+                            decryptor.TransformBlock(streamBuffer, 144, alignedLen, streamBuffer, 144);
+                        }
+                    }
+                }
+            }
+
+
             using var archive = new FByteArchive(Ar.Name, streamBuffer, Ar.Versions);
-
-            // Header
-            Header = new FIoStoreTocHeader(archive);
-
             if (Header.Version < EIoStoreTocVersion.PartitionSize)
             {
                 Header.PartitionCount = 1;
