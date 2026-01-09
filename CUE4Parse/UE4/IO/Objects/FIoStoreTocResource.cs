@@ -66,6 +66,9 @@ namespace CUE4Parse.UE4.IO.Objects
 
 
             using var archive = new FByteArchive(Ar.Name, streamBuffer, Ar.Versions);
+
+            // Header
+            Header = new FIoStoreTocHeader(archive);
             if (Header.Version < EIoStoreTocVersion.PartitionSize)
             {
                 Header.PartitionCount = 1;
